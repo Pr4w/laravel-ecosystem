@@ -10,11 +10,25 @@ use Pr4w\Ecosystem\Product;
 
 beforeEach(function () {
     config()->set('ecosystem.catalog', null);
+    config()->set('app.locale', 'fr');
+    config()->set('app.fallback_locale', 'fr');
     Ecosystem::flush();
 });
 
 it('charge le catalogue livré sans erreur', function () {
     expect(Ecosystem::catalog())->not->toBeEmpty();
+});
+
+it('est traduit en français et en anglais', function () {
+    foreach (['fr', 'en'] as $locale) {
+        app()->setLocale($locale);
+        Ecosystem::flush();
+
+        Ecosystem::all()->each(function (Product $product) use ($locale) {
+            expect(trim($product->tagline))->not->toBe('', "{$product->key} n'a pas de tagline en {$locale}")
+                ->and(trim((string) $product->description))->not->toBe('', "{$product->key} n'a pas de description en {$locale}");
+        });
+    }
 });
 
 it('a des clés au bon format', function () {

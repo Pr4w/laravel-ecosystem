@@ -33,13 +33,20 @@ final readonly class Product implements Arrayable, JsonSerializable
 
     /**
      * @param  array<string, mixed>  $data
+     * @param  list<string>  $locales  Langues à essayer, dans l'ordre.
      */
-    public static function fromArray(string $key, array $data, string $logosPath): self
+    public static function fromArray(string $key, array $data, string $logosPath, array $locales = []): self
     {
-        foreach (['name', 'url', 'tagline'] as $field) {
+        foreach (['name', 'url'] as $field) {
             if (! isset($data[$field]) || ! is_string($data[$field]) || trim($data[$field]) === '') {
                 throw InvalidProductException::missingField($key, $field);
             }
+        }
+
+        $tagline = self::translate($data['tagline'] ?? null, $locales);
+
+        if ($tagline === null) {
+            throw InvalidProductException::missingField($key, 'tagline');
         }
 
         if (filter_var($data['url'], FILTER_VALIDATE_URL) === false) {
@@ -50,9 +57,9 @@ final readonly class Product implements Arrayable, JsonSerializable
             key: $key,
             name: $data['name'],
             url: self::normalizeUrl($data['url']),
-            tagline: $data['tagline'],
+            tagline: $tagline,
             logo: Logo::make($data['logo'] ?? null, $logosPath, $data['name']),
-            description: $data['description'] ?? null,
+            description: self::translate($data['description'] ?? null, $locales),
             color: $data['color'] ?? null,
             category: $data['category'] ?? null,
             tags: array_values($data['tags'] ?? []),
@@ -64,6 +71,44 @@ final readonly class Product implements Arrayable, JsonSerializable
     public function host(): string
     {
         return self::normalizeHost($this->url);
+    }
+
+    /**
+     * Résout un champ traduisible.
+     *
+     * Une chaîne simple vaut pour toutes les langues. Un tableau
+     * ['fr' => …, 'en' => …] est résolu dans l'ordre des langues
+     * demandées, puis retombe sur la première valeur disponible :
+     * un site n'affiche jamais un texte vide faute de traduction.
+     *
+     * @param  string|array<string, string>|null  $value
+     * @param  list<string>  $locales
+     */
+    public static function translate(string|array|null $value, array $locales = []): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value)) {
+            return trim($value) === '' ? null : $value;
+        }
+
+        foreach ($locales as $locale) {
+            foreach ([$locale, strtok((string) $locale, '_-')] as $candidate) {
+                if (is_string($value[$candidate] ?? null) && trim($value[$candidate]) !== '') {
+                    return $value[$candidate];
+                }
+            }
+        }
+
+        foreach ($value as $fallback) {
+            if (is_string($fallback) && trim($fallback) !== '') {
+                return $fallback;
+            }
+        }
+
+        return null;
     }
 
     /**

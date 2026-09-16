@@ -17,10 +17,11 @@ Le package ne fournit **aucune vue** : il fournit des données propres. Chaque s
 2. [Configuration de l'app](#configuration-de-lapp)
 3. [Afficher les liens](#afficher-les-liens) (Blade, Inertia + Vue, JSON)
 4. [Les logos](#les-logos)
-5. [Référence de l'API](#référence-de-lapi)
-6. [Générer la fiche d'une app avec Claude Code](#générer-la-fiche-dune-app-avec-claude-code) (prompts)
-7. [Ajouter ou modifier une app (mainteneur)](#ajouter-ou-modifier-une-app-mainteneur)
-8. [Tests](#tests)
+5. [Langues](#langues)
+6. [Référence de l'API](#référence-de-lapi)
+7. [Générer la fiche d'une app avec Claude Code](#générer-la-fiche-dune-app-avec-claude-code) (prompts)
+8. [Ajouter ou modifier une app (mainteneur)](#ajouter-ou-modifier-une-app-mainteneur)
+9. [Tests](#tests)
 
 ---
 
@@ -59,6 +60,8 @@ php artisan ecosystem:list
 ```
 
 ```
+ INFO  Langues : fr → en
+
  INFO  App courante : LaRédac (laredac)
 
 +-----------------+-----------------+------------------------------+-------------------+--------------------+
@@ -86,6 +89,8 @@ php artisan vendor:publish --tag=ecosystem-config
 | `utm.source` | `null` | Par défaut : clé courante, sinon host de `APP_URL` |
 | `utm.medium` | `ecosystem` | |
 | `utm.campaign` | `cross-promo` | |
+| `locale` | `null` | Langue des textes. Par défaut celle de l'app. |
+| `fallback_locale` | `null` | Langue de repli. Par défaut celle de l'app. |
 | `catalog` / `logos_path` | `null` | Surcharges pour tests uniquement |
 
 ## Afficher les liens
@@ -278,6 +283,30 @@ $logo->render('size-6', ['url', 'text']); // ignore le SVG et la préférence du
 
 **Astuce :** pour qu'un SVG prenne la couleur du texte du site, utilise `fill="currentColor"` ou `stroke="currentColor"` dans le fichier source.
 
+## Langues
+
+`tagline` et `description` acceptent une chaîne ou un tableau par langue :
+
+```php
+'tagline' => [
+    'fr' => 'Résume vos messages vocaux WhatsApp en quelques secondes.',
+    'en' => 'Summarises your WhatsApp voice notes in seconds.',
+],
+```
+
+Rien à faire côté site : `$app->tagline` rend déjà la bonne langue. La résolution suit cet ordre :
+
+1. La langue de la requête, `app()->getLocale()`.
+2. Sa langue de base : `fr_CA` essaie `fr`.
+3. La langue de repli, `app.fallback_locale`.
+4. La première traduction disponible.
+
+La dernière étape est volontaire : **un site n'affiche jamais un blanc** parce qu'une traduction manque. Il montre le français plutôt que rien.
+
+Le catalogue est mis en cache par langue, donc un site multilingue qui change de locale en cours de requête obtient bien les deux versions, sans `flush()`.
+
+`name` n'est pas traduisible : une marque garde son nom.
+
 ## Référence de l'API
 
 ### `Ecosystem` (façade `Pr4w\Ecosystem\Facades\Ecosystem`)
@@ -299,6 +328,8 @@ Les collections sont indexées par clé : `Ecosystem::others()->get('abrege')`, 
 ### `Product`
 
 Propriétés en lecture seule : `key`, `name`, `url`, `tagline`, `description`, `logo` (`Logo`), `color`, `category`, `tags`, `meta`, `active`.
+
+`tagline` et `description` sont déjà résolues dans la langue de la requête, voir [Langues](#langues).
 
 `url` est normalisée au chargement : une URL racine reçoit toujours un slash final (`https://abrege.app` → `https://abrege.app/`), pour que les UTM produisent `https://abrege.app/?utm_…`. Un chemin existant est conservé tel quel.
 
@@ -345,8 +376,14 @@ LIVRABLE 2 — l'entrée PHP à coller dans `resources/products.php` :
     '<clé>' => [
         'name' => '…',          // Nom exact de la marque, typographie incluse (apostrophes, accents, casse)
         'url' => 'https://…',   // URL de production canonique : https, sans www (le slash final est ajouté automatiquement)
-        'tagline' => '…',       // 1 phrase, ≤ 80 caractères, se termine par un point, dit ce que l'app FAIT pour l'utilisateur
-        'description' => '…',   // 2 phrases max, ≤ 200 caractères, complète la tagline sans la répéter
+        'tagline' => [          // 1 phrase, ≤ 80 caractères, se termine par un point, dit ce que l'app FAIT pour l'utilisateur
+            'fr' => '…',
+            'en' => '…',
+        ],
+        'description' => [      // 2 phrases max, ≤ 200 caractères, complète la tagline sans la répéter
+            'fr' => '…',
+            'en' => '…',
+        ],
         'logo' => [
             'svg' => '<clé>.svg',       // le fichier du livrable 1 (omettre si pas de SVG)
             'url' => 'https://…',       // logo couleur public, si tu en as trouvé un (sinon omettre)
@@ -364,7 +401,9 @@ Règles :
   Pour l'URL : APP_URL de .env.example, canonical de la landing, sitemap, config/app.php.
 - Tout ce que tu n'as PAS pu vérifier dans le dépôt : mets la meilleure valeur possible suivie
   d'un commentaire `// TODO : à vérifier` sur la ligne. N'invente rien silencieusement.
-- Textes en français, tutoiement interdit dans tagline/description (voix de marque neutre).
+- Tagline et description dans les DEUX langues. L'anglais n'est pas un calque du français :
+  reprends les termes que l'app utilise elle-même dans sa version anglaise si elle en a une,
+  sinon écris un anglais naturel et court. Tutoiement interdit en français (voix de marque neutre).
 - Termine par une liste courte : ce que tu as trouvé où (fichier source du logo, source de la
   tagline, source de la couleur), et ce qui reste en TODO.
 ````
@@ -410,10 +449,16 @@ Tout se passe dans **`resources/products.php`** et **`resources/logos/`**.
 
    ```php
    'ma-nouvelle-app' => [
-       'name' => 'Ma Nouvelle App',          // obligatoire
+       'name' => 'Ma Nouvelle App',          // obligatoire, jamais traduit
        'url' => 'https://manouvelleapp.fr',  // obligatoire
-       'tagline' => 'Une phrase de pitch.',  // obligatoire
-       'description' => 'Deux phrases de plus.',
+       'tagline' => [                        // obligatoire, chaîne ou tableau par langue
+           'fr' => 'Une phrase de pitch.',
+           'en' => 'A one-line pitch.',
+       ],
+       'description' => [
+           'fr' => 'Deux phrases de plus.',
+           'en' => 'Two more sentences.',
+       ],
        'logo' => [
            'svg' => 'ma-nouvelle-app.svg',   // fichier dans resources/logos
            'url' => 'https://manouvelleapp.fr/logo.png',

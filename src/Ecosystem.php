@@ -10,8 +10,8 @@ use Pr4w\Ecosystem\Exceptions\InvalidProductException;
 
 class Ecosystem
 {
-    /** @var Collection<string, Product>|null */
-    private ?Collection $catalog = null;
+    /** @var array<string, Collection<string, Product>> Catalogue par langue. */
+    private array $catalogs = [];
 
     public function __construct(private readonly Repository $config) {}
 
@@ -22,7 +22,23 @@ class Ecosystem
      */
     public function catalog(): Collection
     {
-        return $this->catalog ??= $this->load();
+        $locales = $this->locales();
+
+        return $this->catalogs[implode('|', $locales)] ??= $this->load($locales);
+    }
+
+    /**
+     * Langues à essayer pour les textes du catalogue, dans l'ordre :
+     * celle de la requête, puis celle de repli de l'app.
+     *
+     * @return list<string>
+     */
+    public function locales(): array
+    {
+        return array_values(array_unique(array_filter([
+            (string) ($this->config->get('ecosystem.locale') ?: $this->config->get('app.locale')),
+            (string) ($this->config->get('ecosystem.fallback_locale') ?: $this->config->get('app.fallback_locale')),
+        ])));
     }
 
     /**
@@ -95,7 +111,7 @@ class Ecosystem
     /** Vide le cache mémoire (tests, changement de config à chaud). */
     public function flush(): void
     {
-        $this->catalog = null;
+        $this->catalogs = [];
     }
 
     public static function defaultCatalogPath(): string
@@ -103,8 +119,11 @@ class Ecosystem
         return dirname(__DIR__).'/resources/products.php';
     }
 
-    /** @return Collection<string, Product> */
-    private function load(): Collection
+    /**
+     * @param  list<string>  $locales
+     * @return Collection<string, Product>
+     */
+    private function load(array $locales): Collection
     {
         $path = $this->config->get('ecosystem.catalog') ?: self::defaultCatalogPath();
 
@@ -121,7 +140,7 @@ class Ecosystem
         $logosPath = $this->config->get('ecosystem.logos_path') ?: dirname($path).'/logos';
 
         return collect($data)->mapWithKeys(fn (mixed $item, int|string $key) => [
-            (string) $key => Product::fromArray((string) $key, (array) $item, $logosPath),
+            (string) $key => Product::fromArray((string) $key, (array) $item, $logosPath, $locales),
         ]);
     }
 }

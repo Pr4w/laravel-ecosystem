@@ -18,6 +18,8 @@ class ListCommand extends Command
     {
         $current = $ecosystem->current();
 
+        $this->components->info('Langues : '.implode(' → ', $ecosystem->locales()));
+
         $current
             ? $this->components->info("App courante : {$current->name} ({$current->key})")
             : $this->components->warn('App courante non détectée : aucune app ne sera masquée. Définis ECOSYSTEM_CURRENT.');

@@ -35,6 +35,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Langues
+    |--------------------------------------------------------------------------
+    | Les champs "tagline" et "description" du catalogue acceptent soit une
+    | chaîne, soit un tableau ['fr' => …, 'en' => …]. La langue de la requête
+    | est utilisée, puis celle de repli. Laisser à null pour suivre l'app.
+    */
+    'locale' => null,
+    'fallback_locale' => null,
+
+    /*
+    |--------------------------------------------------------------------------
     | Surcharges (tests / preview uniquement)
     |--------------------------------------------------------------------------
     | Laisser à null en production : le catalogue du package fait foi.

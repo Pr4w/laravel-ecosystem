@@ -10,7 +10,8 @@ return [
     'beta' => [
         'name' => 'Beta App',
         'url' => 'https://beta.test/',
-        'tagline' => 'Beta tagline',
+        'tagline' => ['fr' => 'Pitch de Beta', 'en' => 'Beta tagline'],
+        'description' => ['en' => 'Only English'],
         'logo' => 'https://beta.test/logo.png',
     ],
     'delta' => [

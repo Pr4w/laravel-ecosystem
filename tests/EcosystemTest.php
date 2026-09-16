@@ -9,6 +9,8 @@ beforeEach(function () {
     config()->set('ecosystem.catalog', __DIR__.'/Fixtures/products.php');
     config()->set('ecosystem.current', null);
     config()->set('app.url', 'https://www.alpha.test');
+    config()->set('app.locale', 'fr');
+    config()->set('app.fallback_locale', 'en');
     Ecosystem::flush();
 });
 
@@ -60,6 +62,56 @@ it('rejette une préférence de logo invalide', function () {
         'logo' => ['text' => 'X', 'prefer' => 'emoji'],
     ], '/tmp');
 })->throws(InvalidProductException::class, 'préférence de logo invalide');
+
+it('rend les textes dans la langue de l’app', function () {
+    expect(Ecosystem::find('beta')->tagline)->toBe('Pitch de Beta');
+
+    app()->setLocale('en');
+
+    expect(Ecosystem::find('beta')->tagline)->toBe('Beta tagline');
+});
+
+it('change de langue sans vider le cache', function () {
+    expect(Ecosystem::find('beta')->tagline)->toBe('Pitch de Beta');
+
+    app()->setLocale('en');
+
+    expect(Ecosystem::find('beta')->tagline)->toBe('Beta tagline');
+
+    app()->setLocale('fr');
+
+    expect(Ecosystem::find('beta')->tagline)->toBe('Pitch de Beta');
+});
+
+it('ramène une locale régionale à sa langue de base', function () {
+    app()->setLocale('fr_CA');
+
+    expect(Ecosystem::find('beta')->tagline)->toBe('Pitch de Beta');
+});
+
+it('retombe sur la langue de repli puis sur la première disponible', function () {
+    app()->setLocale('es');
+
+    expect(Ecosystem::find('beta')->tagline)->toBe('Beta tagline')
+        ->and(Ecosystem::find('beta')->description)->toBe('Only English');
+
+    config()->set('app.fallback_locale', 'de');
+    Ecosystem::flush();
+
+    expect(Ecosystem::find('beta')->tagline)->toBe('Pitch de Beta');
+});
+
+it('accepte encore une chaîne simple pour toutes les langues', function () {
+    app()->setLocale('en');
+
+    expect(Ecosystem::find('alpha')->tagline)->toBe('Alpha tagline');
+});
+
+it('rejette un produit dont la tagline n’existe dans aucune langue', function () {
+    Product::fromArray('x', [
+        'name' => 'X', 'url' => 'https://x.test', 'tagline' => ['fr' => '  '],
+    ], '/tmp', ['fr']);
+})->throws(InvalidProductException::class, 'tagline');
 
 it('ajoute les UTM au lien', function () {
     config()->set('ecosystem.current', 'alpha');
