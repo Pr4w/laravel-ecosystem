@@ -13,6 +13,17 @@ return [
         'tagline' => 'Beta tagline',
         'logo' => 'https://beta.test/logo.png',
     ],
+    'delta' => [
+        'name' => 'Delta',
+        'url' => 'https://delta.test',
+        'tagline' => 'Delta tagline',
+        'logo' => [
+            'text' => '🍿',
+            'prefer' => 'text',
+            'svg' => 'alpha.svg',
+            'url' => 'https://delta.test/logo.png',
+        ],
+    ],
     'gamma' => [
         'name' => 'Gamma',
         'url' => 'https://gamma.test',

@@ -1,6 +1,6 @@
 # pr4w/laravel-ecosystem
 
-Catalogue partagé de toutes les apps pr4w (LaRédac', NotionScheduler, Abrège…).
+Catalogue partagé de toutes les apps pr4w (LaRédac, NotionScheduler, Abrège, Cherche Mission…).
 Chaque app installe le package et récupère **la liste des autres apps** (nom, URL, pitch, logo, couleur…) pour afficher des liens croisés **avec son propre design**.
 
 Le package ne fournit **aucune vue** : il fournit des données propres. Chaque site fait son rendu.
@@ -59,16 +59,17 @@ php artisan ecosystem:list
 ```
 
 ```
- INFO  App courante : LaRédac' (laredac)
+ INFO  App courante : LaRédac (laredac)
 
-+-----------------+-----------------+-----------------------------+-----------------+--------------------+
-| Clé             | Nom             | URL                         | Logo            | Statut             |
-+-----------------+-----------------+-----------------------------+-----------------+--------------------+
-| laredac         | LaRédac'        | https://laredac.ai/          | svg + url + text| courante (masquée) |
-| notionscheduler | NotionScheduler | https://notionscheduler.app/ | svg + text      | affichée           |
-| abrege          | Abrège          | https://abrege.app/          | svg + text      | affichée           |
-| mission-monitor | Mission Monitor | https://…                    | text            | inactive           |
-+-----------------+-----------------+-----------------------------+-----------------+--------------------+
++-----------------+-----------------+------------------------------+-------------------+--------------------+
+| Clé             | Nom             | URL                          | Logo              | Statut             |
++-----------------+-----------------+------------------------------+-------------------+--------------------+
+| laredac         | LaRédac         | https://laredac.ai/          | svg* + url + text | courante (masquée) |
+| notionscheduler | NotionScheduler | https://notionscheduler.app/ | svg* + url + text | affichée           |
+| abrege          | Abrège          | https://abrege.app/          | svg + url + text* | affichée           |
+| cherche-mission | Cherche Mission | https://cherchemission.fr/   | svg + url + text* | affichée           |
++-----------------+-----------------+------------------------------+-------------------+--------------------+
+  * format affiché par défaut (clé "prefer" du catalogue)
 ```
 
 ### Options (facultatif)
@@ -105,7 +106,12 @@ La méthode à retenir : **`Ecosystem::others()`**. Elle renvoie les apps active
         @foreach (Ecosystem::others() as $app)
             <li>
                 <a href="{{ $app->link() }}" class="flex items-center gap-3">
-                    {{ $app->logo->render('size-8 text-zinc-500') }}
+                    <span
+                        class="grid size-8 shrink-0 place-items-center text-2xl leading-none"
+                        @style(['color: '.$app->color => filled($app->color)])
+                    >
+                        {{ $app->logo->render('size-full') }}
+                    </span>
                     <span>
                         <strong>{{ $app->name }}</strong>
                         <small>{{ $app->tagline }}</small>
@@ -117,7 +123,11 @@ La méthode à retenir : **`Ecosystem::others()`**. Elle renvoie les apps active
 </footer>
 ```
 
-`render()` choisit automatiquement le meilleur format disponible (SVG → image → texte). Tu peux aussi le forcer, voir [Les logos](#les-logos).
+Le conteneur porte la taille et la couleur ; `render()` s'y adapte, qu'il produise un SVG, une image ou un emoji.
+
+- **`style="color"` teinte le SVG** : les fichiers du package utilisent `currentColor`, donc le logo prend la couleur de marque du produit. Retire l'attribut et il prend la couleur du texte du footer.
+- **`text-2xl` dimensionne l'emoji**, qui est du texte et ignore les classes de largeur.
+- `render()` choisit le format automatiquement, voir [Les logos](#les-logos).
 
 ### Inertia + Vue
 
@@ -154,6 +164,7 @@ const apps = computed(() => usePage().props.ecosystem ?? [])
         <span
           v-if="app.logo.preferred === 'svg'"
           class="size-8 [&>svg]:size-full"
+          :style="app.color ? { color: app.color } : undefined"
           v-html="app.logo.svg"
         />
         <img
@@ -163,7 +174,7 @@ const apps = computed(() => usePage().props.ecosystem ?? [])
           class="size-8"
           loading="lazy"
         />
-        <span v-else class="size-8 grid place-items-center">{{ app.logo.text }}</span>
+        <span v-else class="size-8 grid place-items-center text-2xl leading-none">{{ app.logo.text }}</span>
 
         <span>
           <strong>{{ app.name }}</strong>
@@ -174,6 +185,8 @@ const apps = computed(() => usePage().props.ecosystem ?? [])
   </ul>
 </template>
 ```
+
+`app.logo.preferred` porte déjà le choix du catalogue : pas de logique de format à écrire côté Vue.
 
 `v-html` est sûr ici : les SVG viennent du package, pas d'une saisie utilisateur.
 
@@ -220,20 +233,46 @@ Chaque produit peut avoir **un ou plusieurs** formats. Le site choisit celui qu'
 | Texte | `$logo->text` | Initiales ou emoji. Toujours présent (généré depuis le nom si absent). |
 | Alt | `$logo->alt` | Texte alternatif (par défaut le nom). |
 
-Méthodes utiles :
+### Préférence déclarée par le produit
+
+Certaines marques **sont** un emoji : Abrège c'est 🍿, Cherche Mission c'est 👀. Leur dessiner un SVG reviendrait à leur inventer une identité. Ces produits déclarent donc leur format dans le catalogue :
+
+```php
+'logo' => [
+    'text' => '🍿',
+    'prefer' => 'text',        // ce produit s'affiche en emoji, pas en SVG
+    'svg' => 'abrege.svg',     // repli monochrome, pour un site qui n'en veut pas
+],
+```
+
+`prefer` accepte `'svg'`, `'url'` ou `'text'`. Sans cette clé, l'ordre par défaut s'applique : SVG, puis image, puis texte.
+
+**Qui décide quoi :**
+
+| Appel | Format retenu |
+|---|---|
+| `$logo->render()` | Celui déclaré par le produit, sinon l'ordre par défaut |
+| `$logo->render('…', ['svg', 'text'])` | Celui du site : un ordre explicite est toujours prioritaire |
+
+Un site qui veut un footer tout en monochrome écrit donc `render('size-6', ['svg', 'text'])` et récupère les SVG des quatre produits, emoji compris. Par défaut il obtient le choix de chaque marque.
+
+Côté Inertia, rien à faire : `logo.preferred` du tableau porte déjà le format résolu.
+
+### Méthodes utiles
 
 ```php
 $logo = Ecosystem::find('laredac')->logo;
 
 $logo->hasSvg();                    // bool
 $logo->hasUrl();                    // bool
-$logo->preferred();                 // 'svg' | 'url' | 'text'
-$logo->preferred(['url', 'svg']);   // ordre personnalisé
+$logo->prefer;                      // préférence déclarée au catalogue, ou null
+$logo->preferred();                 // format retenu : 'svg' | 'url' | 'text'
+$logo->preferred(['url', 'svg']);   // ordre imposé par le site
 
 $logo->svg('size-6 text-white');    // HtmlString, classes fusionnées sur <svg>
 $logo->img('size-6 rounded');       // HtmlString <img loading="lazy">
 $logo->render('size-6');            // meilleur format dispo
-$logo->render('size-6', ['url', 'text']); // ignore le SVG sur ce site
+$logo->render('size-6', ['url', 'text']); // ignore le SVG et la préférence du catalogue
 {{ $logo }}                         // équivalent à render() sans classe
 ```
 
@@ -294,6 +333,9 @@ LIVRABLE 1 — le fichier `<clé>.svg` (contenu complet dans un bloc de code) :
   zones blanches ou transparentes du logo original restent fill="none".
 - Si le logo est un symbole + un mot-marque, garde uniquement le symbole, cadré au carré.
 - Léger : idéalement < 3 Ko. Simplifie les paths si besoin, sans dénaturer la marque.
+- Si la marque EST un emoji (l'app l'utilise comme logo dans son en-tête, son favicon ou
+  ses réseaux), ne dessine rien : dis-le, donne l'emoji, et mets 'prefer' => 'text' dans
+  l'entrée du livrable 2. Ne lui invente pas un symbole vectoriel.
 - Si tu ne trouves aucune source vectorielle exploitable (PNG uniquement, logo trop
   complexe), dis-le clairement et fournis à la place l'URL publique absolue d'un logo en
   couleurs (PNG/SVG/WebP, ≥ 128 px, servi en https) à mettre dans 'logo.url'.
@@ -309,8 +351,9 @@ LIVRABLE 2 — l'entrée PHP à coller dans `resources/products.php` :
             'svg' => '<clé>.svg',       // le fichier du livrable 1 (omettre si pas de SVG)
             'url' => 'https://…',       // logo couleur public, si tu en as trouvé un (sinon omettre)
             'text' => '…',              // initiales (1 à 2 lettres majuscules) ou 1 emoji
+            'prefer' => '…',            // 'text' si la marque est un emoji, sinon omettre
         ],
-        'color' => '#RRGGBB',   // couleur de marque principale (la couleur d'accent, pas le fond)
+        'color' => '#RRGGBB',   // couleur de marque principale : elle TEINTE le SVG dans le footer, prends la couleur d'accent, pas le fond
         'category' => '…',      // 1 mot minuscule : linkedin, social, productivité, freelance, …
         'tags' => ['…', '…', '…'],  // 3 à 5 mots-clés en minuscules, en français
     ],
@@ -374,7 +417,8 @@ Tout se passe dans **`resources/products.php`** et **`resources/logos/`**.
        'logo' => [
            'svg' => 'ma-nouvelle-app.svg',   // fichier dans resources/logos
            'url' => 'https://manouvelleapp.fr/logo.png',
-           'text' => 'MN',
+           'text' => 'MN',                   // initiales, ou l'emoji de la marque
+           'prefer' => 'svg',                // facultatif : 'svg', 'url' ou 'text'
        ],
        'color' => '#FF5A1F',
        'category' => 'productivité',

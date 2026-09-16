@@ -1,6 +1,7 @@
 <?php
 
 use Pr4w\Ecosystem\Facades\Ecosystem;
+use Pr4w\Ecosystem\Logo;
 use Pr4w\Ecosystem\Product;
 
 /*
@@ -27,8 +28,20 @@ it('n’a pas deux produits sur le même domaine', function () {
 });
 
 it('a un visuel pour chaque produit actif', function () {
-    Ecosystem::all()->each(
-        fn (Product $product) => expect($product->logo->hasSvg() || $product->logo->hasUrl())
-            ->toBeTrue("{$product->key} n'a ni SVG ni URL de logo")
-    );
+    Ecosystem::all()->each(function (Product $product) {
+        $logo = $product->logo;
+
+        expect($logo->hasSvg() || $logo->hasUrl() || $logo->prefer === Logo::TEXT)
+            ->toBeTrue("{$product->key} n'a ni SVG, ni URL, ni emoji assumé (prefer => 'text')");
+    });
+});
+
+it('affiche le format déclaré par chaque produit', function () {
+    Ecosystem::all()->each(function (Product $product) {
+        $logo = $product->logo;
+
+        if ($logo->prefer !== null) {
+            expect($logo->preferred())->toBe($logo->prefer, "{$product->key} ne rend pas le format déclaré");
+        }
+    });
 });

@@ -2,6 +2,7 @@
 
 use Pr4w\Ecosystem\Exceptions\InvalidProductException;
 use Pr4w\Ecosystem\Facades\Ecosystem;
+use Pr4w\Ecosystem\Logo;
 use Pr4w\Ecosystem\Product;
 
 beforeEach(function () {
@@ -12,22 +13,53 @@ beforeEach(function () {
 });
 
 it('masque l’app courante détectée via APP_URL et les produits inactifs', function () {
-    expect(Ecosystem::others()->keys()->all())->toBe(['beta'])
+    expect(Ecosystem::others()->keys()->all())->toBe(['beta', 'delta'])
         ->and(Ecosystem::current()?->key)->toBe('alpha');
 });
 
 it('priorise ECOSYSTEM_CURRENT sur APP_URL', function () {
     config()->set('ecosystem.current', 'beta');
 
-    expect(Ecosystem::others()->keys()->all())->toBe(['alpha'])
+    expect(Ecosystem::others()->keys()->all())->toBe(['alpha', 'delta'])
         ->and(Ecosystem::current()?->key)->toBe('beta');
 });
 
 it('respecte les exclusions', function () {
-    config()->set('ecosystem.except', ['beta']);
+    config()->set('ecosystem.except', ['beta', 'delta']);
 
     expect(Ecosystem::others())->toBeEmpty();
 });
+
+it('affiche l’emoji quand le catalogue déclare prefer = text', function () {
+    $logo = Ecosystem::find('delta')->logo;
+
+    expect($logo->prefer)->toBe('text')
+        ->and($logo->hasSvg())->toBeTrue()
+        ->and($logo->preferred())->toBe('text')
+        ->and((string) $logo->render('text-2xl'))->toBe('<span class="text-2xl" aria-hidden="true">🍿</span>')
+        ->and($logo->toArray()['preferred'])->toBe('text');
+});
+
+it('laisse le site passer outre la préférence du catalogue', function () {
+    $logo = Ecosystem::find('delta')->logo;
+
+    expect($logo->preferred([Logo::SVG, Logo::TEXT]))->toBe('svg')
+        ->and((string) $logo->render('size-6', [Logo::SVG]))->toContain('<svg');
+});
+
+it('rejette une clé de logo inconnue', function () {
+    Product::fromArray('x', [
+        'name' => 'X', 'url' => 'https://x.test', 'tagline' => 'x',
+        'logo' => ['text' => 'X', 'preferred' => 'text'],
+    ], '/tmp');
+})->throws(InvalidProductException::class, 'clé de logo inconnue');
+
+it('rejette une préférence de logo invalide', function () {
+    Product::fromArray('x', [
+        'name' => 'X', 'url' => 'https://x.test', 'tagline' => 'x',
+        'logo' => ['text' => 'X', 'prefer' => 'emoji'],
+    ], '/tmp');
+})->throws(InvalidProductException::class, 'préférence de logo invalide');
 
 it('ajoute les UTM au lien', function () {
     config()->set('ecosystem.current', 'alpha');
@@ -95,7 +127,7 @@ it('respecte un ordre de préférence personnalisé', function () {
 it('sérialise pour Inertia / JSON', function () {
     $array = Ecosystem::toArray();
 
-    expect($array)->toHaveCount(1)
+    expect($array)->toHaveCount(2)
         ->and($array[0])->toHaveKeys(['key', 'name', 'href', 'tagline', 'logo'])
         ->and($array[0]['logo'])->toHaveKeys(['svg', 'url', 'text', 'alt', 'preferred'])
         ->and(json_encode(Ecosystem::find('beta')))->toBeJson();

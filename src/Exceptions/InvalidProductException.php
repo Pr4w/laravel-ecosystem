@@ -28,6 +28,20 @@ final class InvalidProductException extends InvalidArgumentException
         return new self("Produit [{$key}] : URL invalide \"{$url}\".");
     }
 
+    public static function unknownLogoKey(string $product, string $key): self
+    {
+        return new self(
+            "Produit [{$product}] : clé de logo inconnue \"{$key}\". Clés acceptées : svg, url, text, alt, prefer."
+        );
+    }
+
+    public static function invalidPreference(string $product, string $value): self
+    {
+        return new self(
+            "Produit [{$product}] : préférence de logo invalide \"{$value}\". Valeurs acceptées : svg, url, text."
+        );
+    }
+
     public static function missingSvg(string $product, string $path): self
     {
         return new self("Produit [{$product}] : fichier SVG introuvable ({$path}).");

@@ -30,11 +30,7 @@ class ListCommand extends Command
                 $product->key,
                 $product->name,
                 $product->url,
-                implode(' + ', array_filter([
-                    $product->logo->hasSvg() ? 'svg' : null,
-                    $product->logo->hasUrl() ? 'url' : null,
-                    'text',
-                ])),
+                $this->formats($product),
                 match (true) {
                     $ecosystem->isCurrent($product) => 'courante (masquée)',
                     ! $product->active => 'inactive',
@@ -44,6 +40,26 @@ class ListCommand extends Command
             ])->values()->all(),
         );
 
+        $this->line('  <fg=gray>* format affiché par défaut (clé "prefer" du catalogue)</>');
+
         return self::SUCCESS;
+    }
+
+    /** Formats disponibles, le format retenu suivi d'une étoile. */
+    private function formats(Product $product): string
+    {
+        $logo = $product->logo;
+        $preferred = $logo->preferred();
+
+        $available = array_filter([
+            $logo->hasSvg() ? 'svg' : null,
+            $logo->hasUrl() ? 'url' : null,
+            'text',
+        ]);
+
+        return implode(' + ', array_map(
+            fn (string $format) => $format === $preferred ? $format.'*' : $format,
+            $available,
+        ));
     }
 }

@@ -25,15 +25,18 @@ final readonly class Logo implements Arrayable, Htmlable, JsonSerializable
 
     public const DEFAULT_ORDER = [self::SVG, self::URL, self::TEXT];
 
+    public const ALLOWED_KEYS = [self::SVG, self::URL, self::TEXT, 'alt', 'prefer'];
+
     public function __construct(
         public ?string $svg = null,
         public ?string $url = null,
         public ?string $text = null,
         public ?string $alt = null,
+        public ?string $prefer = null,
     ) {}
 
     /**
-     * @param  string|array{svg?: string, url?: string, text?: string, alt?: string}|null  $definition
+     * @param  string|array{svg?: string, url?: string, text?: string, alt?: string, prefer?: string}|null  $definition
      */
     public static function make(string|array|null $definition, string $logosPath, string $productName): self
     {
@@ -45,11 +48,24 @@ final readonly class Logo implements Arrayable, Htmlable, JsonSerializable
 
         $definition ??= [];
 
+        foreach (array_keys($definition) as $key) {
+            if (! in_array($key, self::ALLOWED_KEYS, true)) {
+                throw InvalidProductException::unknownLogoKey($productName, (string) $key);
+            }
+        }
+
+        $prefer = $definition['prefer'] ?? null;
+
+        if ($prefer !== null && ! in_array($prefer, self::DEFAULT_ORDER, true)) {
+            throw InvalidProductException::invalidPreference($productName, (string) $prefer);
+        }
+
         return new self(
             svg: isset($definition['svg']) ? self::loadSvg($definition['svg'], $logosPath, $productName) : null,
             url: $definition['url'] ?? null,
             text: $definition['text'] ?? self::initials($productName),
             alt: $definition['alt'] ?? $productName,
+            prefer: $prefer,
         );
     }
 
@@ -66,10 +82,18 @@ final readonly class Logo implements Arrayable, Htmlable, JsonSerializable
     /**
      * Premier format disponible selon l'ordre de préférence.
      *
-     * @param  list<string>  $order
+     * Sans argument, la préférence déclarée dans le catalogue ("prefer")
+     * passe devant l'ordre par défaut. Un ordre passé explicitement par le
+     * site est prioritaire : le site garde toujours le dernier mot.
+     *
+     * @param  list<string>|null  $order
      */
-    public function preferred(array $order = self::DEFAULT_ORDER): string
+    public function preferred(?array $order = null): string
     {
+        $order ??= $this->prefer !== null
+            ? array_merge([$this->prefer], self::DEFAULT_ORDER)
+            : self::DEFAULT_ORDER;
+
         foreach ($order as $type) {
             $available = match ($type) {
                 self::SVG => $this->hasSvg(),
@@ -124,9 +148,9 @@ final readonly class Logo implements Arrayable, Htmlable, JsonSerializable
     /**
      * Rendu HTML automatique selon l'ordre de préférence.
      *
-     * @param  list<string>  $order
+     * @param  list<string>|null  $order
      */
-    public function render(?string $class = null, array $order = self::DEFAULT_ORDER): HtmlString
+    public function render(?string $class = null, ?array $order = null): HtmlString
     {
         return match ($this->preferred($order)) {
             self::SVG => $this->svg($class) ?? new HtmlString(''),
