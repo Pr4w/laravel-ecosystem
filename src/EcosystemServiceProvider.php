@@ -18,10 +18,22 @@ class EcosystemServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'ecosystem');
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../config/ecosystem.php' => config_path('ecosystem.php'),
             ], 'ecosystem-config');
+
+            // Publier les vues pour les réécrire au design du site.
+            $this->publishes([
+                __DIR__.'/../resources/views' => resource_path('views/vendor/ecosystem'),
+            ], 'ecosystem-views');
+
+            // Le composant Vue, pour les sites Inertia.
+            $this->publishes([
+                __DIR__.'/../resources/js' => resource_path('js/ecosystem'),
+            ], 'ecosystem-vue');
 
             $this->commands([ListCommand::class]);
         }

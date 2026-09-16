@@ -13,6 +13,7 @@ return [
         'tagline' => ['fr' => 'Pitch de Beta', 'en' => 'Beta tagline'],
         'description' => ['en' => 'Only English'],
         'logo' => 'https://beta.test/logo.png',
+        'color' => '#123456',
     ],
     'delta' => [
         'name' => 'Delta',

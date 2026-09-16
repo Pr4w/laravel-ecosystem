@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Pr4w\Ecosystem\Product|null find(string $key)
  * @method static bool has(string $key)
  * @method static list<string> locales()
+ * @method static string|null heading()
  * @method static bool isCurrent(\Pr4w\Ecosystem\Product $product)
  * @method static list<array<string, mixed>> toArray(?int $limit = null)
  * @method static void flush()

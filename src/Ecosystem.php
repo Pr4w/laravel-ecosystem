@@ -67,6 +67,19 @@ class Ecosystem
         return $limit !== null ? $others->take($limit) : $others;
     }
 
+    /**
+     * Libellé commun de la section, résolu dans la langue de la requête.
+     * C'est la même phrase sur tous les sites : c'est elle qui fait
+     * reconnaître l'ensemble, bien plus que la mise en forme.
+     */
+    public function heading(): ?string
+    {
+        /** @var string|array<string, string>|null $heading */
+        $heading = $this->config->get('ecosystem.heading');
+
+        return Product::translate($heading, $this->locales());
+    }
+
     public function current(): ?Product
     {
         return $this->catalog()->first(fn (Product $product) => $this->isCurrent($product));

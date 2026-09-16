@@ -15,13 +15,14 @@ Le package ne fournit **aucune vue** : il fournit des données propres. Chaque s
 
 1. [Installation](#installation)
 2. [Configuration de l'app](#configuration-de-lapp)
-3. [Afficher les liens](#afficher-les-liens) (Blade, Inertia + Vue, JSON)
+3. [Afficher les liens](#afficher-les-liens) (vues livrées, Blade, Vue, JSON)
 4. [Les logos](#les-logos)
-5. [Langues](#langues)
-6. [Référence de l'API](#référence-de-lapi)
-7. [Générer la fiche d'une app avec Claude Code](#générer-la-fiche-dune-app-avec-claude-code) (prompts)
-8. [Ajouter ou modifier une app (mainteneur)](#ajouter-ou-modifier-une-app-mainteneur)
-9. [Tests](#tests)
+5. [Conventions d'intégration](#conventions-dintégration)
+6. [Langues](#langues)
+7. [Référence de l'API](#référence-de-lapi)
+8. [Générer la fiche d'une app avec Claude Code](#générer-la-fiche-dune-app-avec-claude-code) (prompts)
+9. [Ajouter ou modifier une app (mainteneur)](#ajouter-ou-modifier-une-app-mainteneur)
+10. [Tests](#tests)
 
 ---
 
@@ -89,17 +90,99 @@ php artisan vendor:publish --tag=ecosystem-config
 | `utm.source` | `null` | Par défaut : clé courante, sinon host de `APP_URL` |
 | `utm.medium` | `ecosystem` | |
 | `utm.campaign` | `cross-promo` | |
+| `heading` | `['fr' => 'Nos autres outils', 'en' => 'Our other tools']` | Libellé de la section. `null` pour aucun. |
 | `locale` | `null` | Langue des textes. Par défaut celle de l'app. |
 | `fallback_locale` | `null` | Langue de repli. Par défaut celle de l'app. |
 | `catalog` / `logos_path` | `null` | Surcharges pour tests uniquement |
 
 ## Afficher les liens
 
-La méthode à retenir : **`Ecosystem::others()`**. Elle renvoie les apps actives, hors app courante, dans l'ordre du catalogue.
+Deux chemins : les **vues livrées**, qui marchent tout de suite, ou **tes propres vues** à partir de `Ecosystem::others()`.
 
 > Utilise toujours `$app->link()` (ou `href` côté tableau) dans les liens, et `$app->url` uniquement pour l'affichage : `link()` ajoute les UTM, ce qui te permet de voir dans l'analytics quelle app envoie du trafic.
 
-### Blade
+### Les trois vues livrées
+
+```blade
+<x-ecosystem::inline />   {{-- une ligne discrète, noms seuls --}}
+<x-ecosystem::grid />     {{-- une grille de 4, avec le pitch --}}
+<x-ecosystem::columns />  {{-- deux colonnes, avec le pitch --}}
+```
+
+C'est tout : le libellé, les liens, les UTM, la teinte des logos et le responsive sont déjà là. La CSS est autonome, sans Tailwind ni étape de build, pour que ça s'affiche correctement dès l'installation.
+
+> **Ce sont des points de départ, pas un cadre imposé.**
+> Elles existent pour que tu aies quelque chose de correct en deux minutes, pas pour que les quatre sites se ressemblent. Chaque site est censé les adapter à son design, et au besoin les jeter : `Ecosystem::others()` reste là pour repartir d'une page blanche. Le seul élément qu'il vaut mieux garder identique partout, c'est le libellé, voir [Conventions d'intégration](#conventions-dintégration).
+
+**Trois niveaux de personnalisation**, du plus léger au plus libre :
+
+| Niveau | Quand | Comment |
+|---|---|---|
+| Variables CSS | Ajuster tailles et couleurs | Redéfinis `--eco-*` sur `.eco` dans ta CSS |
+| Classes du site | Espacement, largeur, fond | `<x-ecosystem::grid class="mt-10 …" />` |
+| Publier les vues | Structure, balises, design system | `vendor:publish --tag=ecosystem-views`, puis réécris |
+
+Les trois acceptent les mêmes attributs :
+
+| Attribut | Défaut | Rôle |
+|---|---|---|
+| `heading` | `config('ecosystem.heading')` | Libellé. `heading=""` pour aucun. |
+| `limit` | toutes | Nombre d'apps affichées. |
+| `utm-content` | `footer` | Distingue les emplacements dans l'analytics. |
+| `apps` | `Ecosystem::others()` | Pour fournir ta propre liste. |
+
+**Niveau 1, les variables.** Cinq suffisent dans la plupart des cas :
+
+```css
+.eco {
+    --eco-mark: 2rem;        /* taille du logo */
+    --eco-gap: 1.5rem;
+    --eco-muted: #71717a;    /* couleur du libellé et du pitch */
+    --eco-name-size: 0.875rem;
+    --eco-pitch-size: 0.75rem;
+}
+```
+
+**Niveau 2, tes classes.** Tout ce que tu passes atterrit sur la balise racine, donc ton design system reprend la main sur l'espacement, la largeur ou le fond :
+
+```blade
+<x-ecosystem::columns class="mt-12 border-t border-zinc-200 pt-8" heading="Du même atelier" />
+```
+
+**Niveau 3, publier.** Dès que tu veux toucher à la structure :
+
+```bash
+php artisan vendor:publish --tag=ecosystem-views
+```
+
+Les fichiers atterrissent dans `resources/views/vendor/ecosystem/` et **t'appartiennent** : Laravel les charge à la place de ceux du package. Réécris-les entièrement si tu veux, avec tes classes Tailwind, tes composants, ta structure. Ils sont désormais dans `resources/`, donc scannés par ton build, ce qui n'était pas le cas depuis `vendor/`.
+
+Tu peux aussi n'en réécrire qu'une partie : garde `grid.blade.php` tel quel et ne réécris que `inline.blade.php`. Ce qui n'est pas publié continue de venir du package.
+
+Pour un site Inertia, le composant Vue équivalent :
+
+```bash
+php artisan vendor:publish --tag=ecosystem-vue
+```
+
+```vue
+<script setup>
+import EcosystemLinks from '@/ecosystem/EcosystemLinks.vue'
+</script>
+
+<template>
+  <EcosystemLinks variant="columns" />
+</template>
+```
+
+Il lit les props partagées `ecosystem` et `ecosystemHeading`, à partager une fois dans `HandleInertiaRequests` :
+
+```php
+'ecosystem' => fn () => Ecosystem::toArray(),
+'ecosystemHeading' => fn () => Ecosystem::heading(),
+```
+
+### Écrire ta propre vue en Blade
 
 ```blade
 @use('Pr4w\Ecosystem\Facades\Ecosystem')
@@ -134,7 +217,7 @@ Le conteneur porte la taille et la couleur ; `render()` s'y adapte, qu'il produi
 - **`text-2xl` dimensionne l'emoji**, qui est du texte et ignore les classes de largeur.
 - `render()` choisit le format automatiquement, voir [Les logos](#les-logos).
 
-### Inertia + Vue
+### Écrire ta propre vue en Inertia + Vue
 
 Partage les données une fois dans `HandleInertiaRequests` :
 
@@ -226,6 +309,21 @@ const apps = computed(() => usePage().props.ecosystem ?? [])
 ```
 
 Même format en JSON (`Product` et `Logo` implémentent `JsonSerializable`), donc exposable tel quel dans une route API.
+
+## Conventions d'intégration
+
+Le style visuel reste à chaque site : une bande identique sur quatre designs différents se lit comme un encart publicitaire, pas comme une partie du site. Ce qui gagne à être commun, c'est l'éditorial et le comportement. C'est là que se joue la reconnaissance.
+
+| Convention | Pourquoi |
+|---|---|
+| **Le même libellé partout**, celui de `config('ecosystem.heading')` | C'est la phrase répétée qui fait comprendre qu'il y a un ensemble derrière, bien plus que la mise en forme. |
+| **Toutes les autres apps**, jamais une sélection qui varie | Une liste qui change d'un site à l'autre casse l'effet d'ensemble. |
+| **En fin de pages publiques**, au-dessus de la ligne légale | Emplacement attendu, sans gêner la conversion du site hôte. |
+| **Logos teintés** par la couleur de marque | Cohérent d'un site à l'autre, et lisible sur fond clair comme sur fond sombre. |
+| **Un `utm_content` par emplacement** | Sans ça, impossible de savoir si le trafic vient du footer ou d'ailleurs. C'est le seul point qui, laissé libre, crée un trou dans la mesure. |
+| **Des `<a>` normaux** : pas de `nofollow`, pas de `target="_blank"` | Les liens doivent être crawlables : c'est la moitié de l'intérêt du dispositif. |
+
+Les vues livrées appliquent déjà tout ça. **Si tu les réécris ou si tu pars d'une page blanche**, garde au moins les deux dernières lignes : elles touchent à la mesure et au référencement, pas au goût.
 
 ## Les logos
 
@@ -320,6 +418,8 @@ Le catalogue est mis en cache par langue, donc un site multilingue qui change de
 | `find(string $key)` | `?Product` | Un produit par clé. |
 | `has(string $key)` | `bool` | |
 | `isCurrent(Product $p)` | `bool` | |
+| `heading()` | `?string` | Libellé commun, traduit. |
+| `locales()` | `list<string>` | Chaîne de langues utilisée. |
 | `toArray(?int $limit)` | `array` | `others()` sérialisé, prêt pour Inertia / JSON. |
 | `flush()` | `void` | Vide le cache mémoire (tests). |
 

@@ -35,6 +35,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Libellé de la section
+    |--------------------------------------------------------------------------
+    | Le même sur tous les sites : c'est ce qui fait reconnaître l'ensemble.
+    | Accepte une chaîne ou un tableau par langue. Mettre null pour ne pas
+    | afficher de libellé du tout.
+    */
+    'heading' => [
+        'fr' => 'Nos autres outils',
+        'en' => 'Our other tools',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Langues
     |--------------------------------------------------------------------------
     | Les champs "tagline" et "description" du catalogue acceptent soit une
