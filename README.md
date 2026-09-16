@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="art/ecosystem.svg" alt="LaRédac · NotionScheduler · Abrège · Cherche Mission" width="688">
+</p>
+
 # pr4w/laravel-ecosystem
 
 Catalogue partagé de toutes les apps pr4w (LaRédac, NotionScheduler, Abrège, Cherche Mission…).
@@ -577,7 +581,13 @@ Tout se passe dans **`resources/products.php`** et **`resources/logos/`**.
 
 2. Dépose le SVG dans `resources/logos/` (le prologue XML et les commentaires sont retirés automatiquement).
 
-3. Vérifie :
+3. Régénère la bande du README :
+
+   ```bash
+   php art/build.php
+   ```
+
+4. Vérifie :
 
    ```bash
    composer test
@@ -585,14 +595,14 @@ Tout se passe dans **`resources/products.php`** et **`resources/logos/`**.
 
    Les tests de `CatalogTest` valident le vrai catalogue : champs obligatoires, URLs, SVG présents, clés propres, pas de doublon de domaine, un visuel par app active.
 
-4. Tag et pousse :
+5. Tag et pousse :
 
    ```bash
    git commit -am "Ajoute Ma Nouvelle App"
    git tag v1.1.0 && git push --tags
    ```
 
-5. Dans **chaque app** :
+6. Dans **chaque app** :
 
    ```bash
    composer update pr4w/laravel-ecosystem
