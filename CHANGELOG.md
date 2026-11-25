@@ -1,6 +1,6 @@
 # Changelog
 
-## Non publié
+## v1.1.0
 - Ajoute Vigipost, la veille LinkedIn automatique avec alertes par e-mail.
 
 ## v1.0.0
