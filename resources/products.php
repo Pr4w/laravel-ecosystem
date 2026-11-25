@@ -92,6 +92,27 @@ return [
         'tags' => ['whatsapp', 'vocal', 'transcription', 'résumé', 'ia'],
     ],
 
+    'vigipost' => [
+        'name' => 'Vigipost',
+        'url' => 'https://vigipost.fr',
+        'tagline' => [
+            'fr' => 'Surveille LinkedIn et vous alerte dès qu’une publication vous concerne.',
+            'en' => 'Watches LinkedIn and emails you the moment a post concerns you.',
+        ],
+        'description' => [
+            'fr' => "Vous décrivez ce que vous cherchez, une IA lit les publications en continu et écarte le bruit. L'alerte part par e-mail : missions, clients, conversations, mentions de votre marque.",
+            'en' => 'You describe what you are after, an AI reads posts continuously and filters out the noise. Alerts land by email: gigs, clients, conversations, mentions of your brand.',
+        ],
+        'logo' => [
+            'svg' => 'vigipost.svg',
+            'url' => 'https://vigipost.fr/icon-512.png',
+            'text' => 'VP',
+        ],
+        'color' => '#4b93ec', // éclairci depuis le #1a63c7 du site : lisible sur fond sombre comme sur fond clair
+        'category' => 'linkedin',
+        'tags' => ['linkedin', 'veille', 'alertes', 'prospection', 'ia'],
+    ],
+
     'cherche-mission' => [
         'name' => 'Cherche Mission',
         'url' => 'https://cherchemission.fr',
